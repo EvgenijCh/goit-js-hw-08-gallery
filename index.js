@@ -1,54 +1,97 @@
 'use strict'
 
-import galleryItems from "./js/gallery-items.js";
-import ref from "./js/ref.js";
+import galleryItemsArr from "./js/gallery-items.js";
 
-const createMarkup = ({preview, original, description}) => 
-`<li class="gallery__item">
-<a
-  class="gallery__link"
-  href= ${original}
->
-  <img
-    class="gallery__image"
-    src=${preview}
-    data-source=${original}
-    alt=${description}
-  />
-</a>
-</li>`;
 
-const createGalery = (galleryItems) => galleryItems.map((item) => 
-createMarkup(item)).join('');
+const lightboxRef = document.querySelector(".js-lightbox");
+const lightboxImageRef = document.querySelector("img.lightbox__image");
+const listGalleryRef = document.querySelector(".js-gallery");
+const buttonCloseRef = document.querySelector(
+  'button[data-action="close-lightbox"]'
+);
 
-ref.ulGallery.insertAdjacentHTML('beforeend', createGalery(galleryItems));
+const fragment = document.createDocumentFragment();
 
-const showImg = (e) => {
-  e.preventDefault();
-    ref.lightBox.classList.add('is-open');
-    ref.bigImg.src = e.target.dataset.source;
-};
-
-const closeImg = (e) => {
-  ref.lightBox.classList.remove('is-open');
-  ref.bigImg.src = '';
-};
-
-const controlGallery = (e) => {
-
-  if(e.target.classList.contains("gallery__image")
-  && !ref.lightBox.classList.contains('is-open')) {
-    showImg(e)
+const createGalleryItem = (item) => {
+  const linkAttrs = {
+    href: item.original,
+    class: "gallery__link",
   };
 
-  if (ref.lightBox.classList.contains('is-open') 
-  && e.target === ref.closeBtn
-  || e.target.classList.contains("lightbox__content")
-  || e.code === 'Escape') {
-      closeImg(e);
+  const imgAttrs = {
+    "data-source": item.original,
+    src: item.preview,
+    alt: item.description,
+    class: "gallery__image",
   };
+
+  const li = createElement("li", { class: "gallery__item" });
+  const a = createElement("a", linkAttrs);
+  const img = createElement("img", imgAttrs);
+
+  a.appendChild(img);
+  li.appendChild(a);
+
+  return li;
 };
 
+function createElement(name, attrs = {}) {
+  const element = document.createElement(name);
 
-document.addEventListener('click', controlGallery);
-document.addEventListener("keydown", controlGallery);
+  for (const key in attrs) {
+    element.setAttribute(key, attrs[key]);
+  }
+
+  return element;
+}
+
+const findTargetIndex = () =>
+  galleryItemsArr.findIndex((element) => element.original === lightboxImageRef.src);
+
+const createGalleryItemsMarkup = galleryItemsArr.forEach((item) => {
+  fragment.appendChild(createGalleryItem(item));
+});
+
+listGalleryRef.append(fragment);
+
+const onOpenModal = ({ target }) => {
+  event.preventDefault();
+  if (target.nodeName !== "IMG") return;
+  lightboxRef.classList.add("is-open");
+  lightboxImageRef.src = target.dataset.source;
+  window.addEventListener("keydown", onPressKey);
+};
+
+const onCloseModal = ({ target, code }) => {
+  if (
+    target === buttonCloseRef ||
+    code === "Escape" ||
+    target !== lightboxImageRef
+  ) {
+    lightboxImageRef.src = "";
+    lightboxRef.classList.remove("is-open");
+    window.removeEventListener("keydown", onPressKey);
+  }
+};
+
+function onPressKey(event) {
+  const idx = findTargetIndex();
+
+  if (event.code === "Escape") {
+    onCloseModal(event);
+  }
+
+  if (event.code === "ArrowLeft") {
+    if (idx !== 0) {
+      lightboxImageRef.src = galleryItemsArr[idx - 1].original;
+    }
+  }
+  if (event.code === "ArrowRight") {
+    if (idx !== galleryItemsArr.length - 1) {
+      lightboxImageRef.src = galleryItemsArr[idx + 1].original;
+    }
+  }
+}
+
+listGalleryRef.addEventListener("click", onOpenModal);
+lightboxRef.addEventListener("click", onCloseModal);
